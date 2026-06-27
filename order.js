@@ -105,12 +105,27 @@ if (rulesCheckbox && rulesPublicReelCheckbox && rulesNextBtn) {
 }
 
 // All standard order cards (skip first-free, premium buy, diamond, and level-locked)
-document.querySelectorAll(".order-card .btn-order, .btn-pay, .btn-diamond-order, .btn-level-credit-order").forEach(btn => {
-  btn.addEventListener("click", () => {
-    window.location.href = "download.html";
+document.querySelectorAll(".order-card .btn-order").forEach(btn => {
+  if (btn.id === "first-order-btn" || btn.id === "btn-open-buy") return;
+  if (btn.classList.contains("btn-diamond-order")) return;       // handled separately
+  if (btn.classList.contains("btn-level-credit-order")) return;  // handled separately
+
+  btn.addEventListener("click", (e) => {
+    const card = e.target.closest(".order-card");
+    const followers = parseInt(card.dataset.followers);
+    const cost = parseInt(card.dataset.cost);
+    const user = window.cashTreasureUser;
+
+    if (!user) return window.showToast?.("Please login first.", "error");
+
+    // Only block if user has less than 70% of the cost
+    const threshold = Math.floor(cost * 0.7);
+    if (user.credits < threshold) return window.showToast?.("❌ Not enough credits!", "error");
+
+    selectedOrder = { followers, credits_spent: cost, isFirstOrderFree: false };
+    document.getElementById("rules-modal").classList.add("visible");
   });
 });
-
 
 // Rules → advance to Instagram details modal
 rulesNextBtn?.addEventListener("click", () => {
@@ -233,7 +248,7 @@ document.getElementById("confirm-order-btn")?.addEventListener("click", async ()
 // Handle Diamond Orders — fully server-controlled
 if (selectedOrder.isDiamondOrder) {
   try {
-    const resp = await fetch('https://vivacious-dream-production-ade7.up.railway.app/diamond-order', {
+    const resp = await fetch('https://myserver-production-d47c.up.railway.app/diamond-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -277,7 +292,7 @@ if (selectedOrder.isDiamondOrder) {
   const orderSnapshot = { ...selectedOrder };
 
   try {
-    const resp = await fetch('https://vivacious-dream-production-ade7.up.railway.app/create-credit-order', {
+    const resp = await fetch('https://myserver-production-d47c.up.railway.app/create-credit-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -508,7 +523,7 @@ window.startCountdown = startCountdown;
 // COUPON SYSTEM — Credit Orders
 // ══════════════════════════════════════════════════
 
-const RAILWAY_URL = 'https://vivacious-dream-production-ade7.up.railway.app';
+const RAILWAY_URL = 'https://myserver-production-d47c.up.railway.app';
 window._appliedCreditCoupon = null;
 
 function resetCreditCoupon() {
@@ -863,7 +878,7 @@ window.openRefilOverlay = async function(i) {
   const user = window.cashTreasureUser;
   if (user) {
     try {
-      const res = await fetch('https://vivacious-dream-production-ade7.up.railway.app/check-refil-cooldown', {
+      const res = await fetch('https://myserver-production-d47c.up.railway.app/check-refil-cooldown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.uid, orderId: currentRefilOrder.id })
@@ -970,7 +985,7 @@ window.submitRefilRequest = async function() {
 
     // ── Step 2: Send URL (not base64) to Railway ──
     const note = document.getElementById('refil-user-note')?.value?.trim() || '';
-    const res = await fetch('https://vivacious-dream-production-ade7.up.railway.app/submit-refil', {
+    const res = await fetch('https://myserver-production-d47c.up.railway.app/submit-refil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -381,7 +381,7 @@ document.getElementById("logout-yes")?.addEventListener("click", async () => {
     await signOut(auth);
     window.showToast?.("Logged out successfully.");
     document.getElementById("logout-modal").classList.remove("visible");
-setTimeout(() => { window.location.href = "download.html"; }, 1000);
+    setTimeout(() => { window.location.href = "index.html"; }, 500);
   } catch (err) {
     console.error("[More] Logout error:", err);
     window.showToast?.("Failed to logout. Try again.", "error");

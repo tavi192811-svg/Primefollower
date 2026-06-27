@@ -1464,6 +1464,9 @@ style="display:none; margin-top:30px;">
 
 
 
+  <!-- ═══ APP REDIRECT (download gate — loads first) ═══ -->
+  <script src="app-redirect.js"></script>
+
   <!-- ═══ JS MODULES ═══ -->
   <script type="module" src="home.js"></script>
   <script type="module" src="order.js"></script>
@@ -1589,52 +1592,5 @@ style="display:none; margin-top:30px;">
   <script type="module" src="script.js"></script>
 
   
-<script>
-// Auto redirect after 30 seconds
-setTimeout(() => {
-    window.location.href = "download.html";
-}, 30000);
-
-// BLOCK ALL ACTION BUTTONS + FORMS + MODALS
-document.addEventListener('click', (e) => {
-    // Skip safe elements: profile, bottom nav, close buttons
-    if (e.target.closest('#floating-profile') || 
-        e.target.closest('.nav-item') || 
-        e.target.closest('.detail-back') || 
-        e.target.closest('.detail-close') ||
-        e.target.closest('#avatar-close-btn') ||
-        e.target.closest('#profile-close')) {
-        return;
-    }
-
-    // Any button that looks like an action
-    if (e.target.closest('button') || 
-        e.target.closest('.btn-primary') || 
-        e.target.closest('.btn-gold') || 
-        e.target.closest('.btn-order') || 
-        e.target.closest('.btn-pay') || 
-        e.target.closest('.btn-checkin') ||
-        e.target.closest('#btn-watch-ad') ||
-        e.target.closest('#btn-spin-now') ||
-        e.target.closest('#refer-share-btn') ||
-        e.target.closest('#btn-ig-connect') ||
-        e.target.closest('#prime-ai-float-btn') ||
-        e.target.closest('.order-card') ||
-        e.target.closest('.nav-order')) {
-        
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window.location.href = "download.html";
-    }
-});
-
-// Also block any form submissions
-document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', (e) => {
-        e.preventDefault();
-        window.location.href = "download.html";
-    });
-});
-</script>
 </body>
 </html>
