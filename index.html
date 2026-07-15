@@ -13,8 +13,6 @@
 <link rel="stylesheet" href="app-styles.css">
  
 
-  
-
   <!-- QR Code Library -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
@@ -524,11 +522,22 @@ Close
         <div class="card-icon" style="background:rgba(255,255,255,0.2); margin: 0 auto 12px;">
           <i class="fas fa-play-circle"></i>
         </div>
-        <h3>Watch Ad</h3>
-        <p>Earn credits instantly</p>
-        <button class="btn-watch-ad" id="btn-watch-ad">▶ WATCH AD</button>
-        <div class="ad-count" id="ad-count">0 / 20 ads today</div>
-      </div>
+<h3>Watch Ad</h3>
+<p>Earn credits instantly</p>
+<button class="btn-watch-ad" id="btn-watch-ad">▶ WATCH AD</button>
+<div class="ad-count" id="ad-count">0 / 20 ads today</div>
+</div>
+
+<!-- My Badges -->
+<div class="card badges-home-card" id="badges-home-card">
+<div class="badges-home-shine"></div>
+<div class="card-icon" style="background:rgba(255,255,255,0.35); margin: 0 auto 12px;">
+<i class="fas fa-medal" style="color:#1a1a2e;"></i>
+</div>
+<h3>My Badges</h3>
+<p>Collect badges &amp; claim FREE rewards</p>
+<button class="btn-watch-ad btn-open-badges" id="btn-open-badges">🏅 VIEW BADGES</button>
+</div>
 
 
 
@@ -826,11 +835,30 @@ Close
     </div>
 
     <!-- ════════ CONTACT PAGE ════════ -->
-    <div class="page-section" id="page-contact">
-      <h2 class="page-title">Contact Us</h2>
+<div class="page-section" id="page-contact">
+<h2 class="page-title">Contact Us</h2>
 
-      <div class="contact-form" id="contact-form">
-        <img id="contact-priority-badge" src="" alt="Priority Support" style="display:none; width:100%; max-width:340px; height:auto; aspect-ratio:1536/1024; object-fit:contain; margin:0 auto 18px; display:block;">
+<!-- ═══ DAILY MISSIONS ═══ -->
+<div class="daily-mission-card" id="daily-mission-card">
+<div class="dm-header">
+<h3 class="dm-title">DAILY MISSIONS</h3>
+<span class="dm-timer" id="dm-timer">🔄 --h --m</span>
+</div>
+<p class="dm-subtitle">🎯 Complete tasks to earn rewards</p>
+<div id="dm-list"></div>
+<div class="dm-bonus" id="dm-bonus" style="display:none;">
+<div class="dm-bonus-shine"></div>
+<div class="dm-bonus-text">
+<span class="dm-bonus-title">🔥 Bonus Reward 🔥</span>
+<span class="dm-bonus-desc">➡️ Complete all missions today</span>
+<span class="dm-bonus-reward" id="dm-bonus-reward">🎁 +10 Extra Credits</span>
+</div>
+<button class="dm-claim-btn" id="dm-bonus-claim" disabled>CLAIM</button>
+</div>
+</div>
+
+<div class="contact-form" id="contact-form">
+        <img id="contact-priority-badge" src="" alt="Priority Support" style="display:none; width:100%; max-width:340px; aspect-ratio:1536/700; object-fit:cover; object-position:center; border-radius:14px; margin:0 auto 14px; display:block;">
         <label for="contact-subject">Subject</label>
         <select class="contact-select" id="contact-subject">
           <option value="" disabled selected>Select a subject</option>
@@ -1464,11 +1492,10 @@ style="display:none; margin-top:30px;">
 
 
 
-  <!-- ═══ APP REDIRECT (download gate — loads first) ═══ -->
-  <script src="app-redirect.js"></script>
-
-  <!-- ═══ JS MODULES ═══ -->
-  <script type="module" src="home.js"></script>
+<!-- ═══ JS MODULES ═══ -->
+<script type="module" src="missions.js"></script>
+<script type="module" src="badges.js"></script>
+<script type="module" src="home.js"></script>
   <script type="module" src="order.js"></script>
   <script type="module" src="wallet.js"></script>
   <script type="module" src="contact.js"></script>
