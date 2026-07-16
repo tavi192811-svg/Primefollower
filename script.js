@@ -43,6 +43,7 @@ await setPersistence(auth, browserLocalPersistence);
 // ── 2. Global Config & Constants ─────────────────────────────────────────────
 
 const AVATAR_COUNT = 12; // Base avatars (Starter allowed)
+const PREMIUM_AVATAR_START = 13; // Lion+ only
 const SITE_URL = window.location.href;
 const ORDER_LOGOS = ["icons/insta.png", "icons/instagram.png"];
 
@@ -103,6 +104,16 @@ function isRealMobile() {
   );
 }
 
+/**
+ * Detects if browser DevTools are open via size heuristic.
+ */
+function detectDevTools() {
+  const threshold = 160;
+  return (
+    window.outerWidth - window.innerWidth > threshold ||
+    window.outerHeight - window.innerHeight > threshold
+  );
+}
 
 /**
  * Probes Google Ad servers to detect Private DNS / ad-blocking.
@@ -124,15 +135,15 @@ function detectPrivateDNS() {
 function enforceMobileOnly() {
   const overlay = document.getElementById("desktop-overlay");
   if (!overlay) return;
-  const mobile = isRealMobile();
-  overlay.style.display = mobile ? "none" : "flex";
-  document.documentElement.style.overflow = mobile ? "" : "hidden";
+  overlay.style.display = isRealMobile() ? "none" : "flex";
+  document.documentElement.style.overflow = isRealMobile() ? "" : "hidden";
 }
 
 // Run on load and whenever the viewport changes
 enforceMobileOnly();
 window.addEventListener("resize", enforceMobileOnly);
 window.addEventListener("orientationchange", enforceMobileOnly);
+setInterval(enforceMobileOnly, 1500);
 
 // Disable right-click and common DevTools shortcuts
 document.addEventListener("contextmenu", e => e.preventDefault());
@@ -308,18 +319,11 @@ function initQRModal() {
   });
 
   document.getElementById("btn-copy-link").addEventListener("click", () => {
-    if (window.Android?.copyToClipboard) {
-      Android.copyToClipboard(SITE_URL);
+    navigator.clipboard.writeText(SITE_URL).then(() => {
       const btn = document.getElementById("btn-copy-link");
       btn.innerHTML = '<i class="fas fa-check"></i>';
       setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
-    } else {
-      navigator.clipboard.writeText(SITE_URL).then(() => {
-        const btn = document.getElementById("btn-copy-link");
-        btn.innerHTML = '<i class="fas fa-check"></i>';
-        setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
-      });
-    }
+    });
   });
 }
 
@@ -780,6 +784,11 @@ function showReferCodeEntryOverlay(uid) {
        showToast("Successful", "success");
 overlay.remove();
 
+// Show 50 Free Followers reward 30 seconds after successful referral code entry
+setTimeout(() => {
+  const user = window.cashTreasureUser;
+  if (user) showDay3ReferralRewardOverlay(user.uid);
+}, 30000);
       }, 3000);
 
     } catch (err) {
@@ -929,12 +938,8 @@ window.onAdRewarded = async function () {
         if (ccEl) ccEl.textContent = displayCredits;
         const adCountEl = document.getElementById("ad-count");
         if (adCountEl) adCountEl.textContent = `${r.adsWatched} / ${r.adLimit} ads today`;
-const rewardDisplay = Number.isInteger(r.reward) ? `+${r.reward}` : `+${r.reward.toFixed(1)}`;
-showToast(`${rewardDisplay} Credit Added 🎉`);
-
-// Track lifetime ads for badges + refresh daily missions
-updateDoc(doc(db, "users", user.uid), { total_ads_watched: increment(1) }).catch(() => {});
-window.refreshDailyMissions?.();
+        const rewardDisplay = Number.isInteger(r.reward) ? `+${r.reward}` : `+${r.reward.toFixed(1)}`;
+        showToast(`${rewardDisplay} Credit Added 🎉`);
 
         // Refresh checkin display
         const freshProfile = await getDoc(doc(db, "users", user.uid));
@@ -953,6 +958,13 @@ window.refreshDailyMissions?.();
   window.pendingRewardType = null;
 };
 
+// ─ Watch Ad Button → Android Ad ─
+document.getElementById("btn-watch-ad")?.addEventListener("click", () => {
+  if (window.Android) {
+    window.pendingRewardType = "watch_ad";
+    Android.showAd();
+  }
+});
 
 // ── 9. Initialization ─────────────────────────────────────────────────────────
 
@@ -986,7 +998,7 @@ setTimeout(() => {
 window.addEventListener("load", () => {
   showDNSWarningIfNeeded();
 });
-
+setTimeout(() => showDNSWarningIfNeeded(), 3500);
 
 // Apply dark mode preference
 if (localStorage.getItem("darkMode") === "true") {
@@ -1132,7 +1144,6 @@ function showWelcomeDiamondOverlay(uid) {
 
   document.body.appendChild(overlay);
 
-
   document.getElementById("welcome-diamond-btn").addEventListener("click", async () => {
     const wbtn = document.getElementById("welcome-diamond-btn");
     wbtn.disabled = true;
@@ -1157,6 +1168,24 @@ function showWelcomeDiamondOverlay(uid) {
 }
 
 
+
+// ══════════════════════════════════════════════════
+// DIAMOND SYSTEM
+// ══════════════════════════════════════════════════
+
+function updateDiamondDisplay(diamonds) {
+  const el = document.getElementById("diamond-count");
+  if (el) el.textContent = Math.floor(diamonds || 0);
+}
+
+// Update diamond on user ready
+window.addEventListener("userReady", async (e) => {
+  const profile = await getUserProfile(e.detail.uid);
+  if (profile) updateDiamondDisplay(profile.diamonds || 0);
+});
+
+// Live sync diamonds
+// This is handled inside the existing onSnapshot — we'll add it there
 
 // ══════════════════════════════════════════════════
 // IMAGE OVERLAY SYSTEM (Diamond page, Credit page, Buy page, Drop page)
@@ -1296,11 +1325,7 @@ document.getElementById('btn-ig-disconnect')?.addEventListener('click', () => {
 document.getElementById('btn-ig-copy-link')?.addEventListener('click', () => {
   const link = document.getElementById('ig-profile-link-display')?.value;
   if (link) {
-   if (window.Android?.copyToClipboard) {
-    Android.copyToClipboard(link);
-  } else {
     navigator.clipboard.writeText(link).then(() => showToast("Link copied!", "success"));
-  }
   }
 });
 

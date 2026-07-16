@@ -267,9 +267,8 @@ if (selectedOrder.isDiamondOrder) {
       return window.showToast?.(dRes.message || "Diamond order failed", "error");
     }
 
-window.showToast?.(`✅ Order placed! ${selectedOrder.followers} followers incoming!`);
-window.markMissionOrderDone?.();
-sendOrderEmail(user, igUsername, igLink, { ...selectedOrder, isFirstOrderFree: false });
+    window.showToast?.(`✅ Order placed! ${selectedOrder.followers} followers incoming!`);
+    sendOrderEmail(user, igUsername, igLink, { ...selectedOrder, isFirstOrderFree: false });
     document.getElementById("username-modal").classList.remove("visible");
 
     if (dRes.completionTime) startCountdown(new Date(dRes.completionTime));
@@ -313,9 +312,8 @@ sendOrderEmail(user, igUsername, igLink, { ...selectedOrder, isFirstOrderFree: f
       return;
     }
 
-window.showToast?.(`✅ Order placed! ${orderSnapshot.followers} followers incoming!`);
-window.markMissionOrderDone?.();
-resetCreditCoupon();
+    window.showToast?.(`✅ Order placed! ${orderSnapshot.followers} followers incoming!`);
+    resetCreditCoupon();
 
     // Non-blocking email notification
     sendOrderEmail(user, igUsername, igLink, orderSnapshot);

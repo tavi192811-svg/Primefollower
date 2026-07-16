@@ -57,65 +57,7 @@ subjectSelect.addEventListener('change', () => {
   }
 });
 
-// ── Send message ──
-document.getElementById('btn-send-message').addEventListener('click', async () => {
-  const user = window.cashTreasureUser;
-  if (!user) {
-    showToast('Please log in first.', 'error');
-    return;
-  }
-
-  const subject = subjectSelect.value;
-  const message = messageArea.value.trim();
-
-  if (!subject) {
-    showToast('Please select a subject.', 'error');
-    return;
-  }
-
-  if (!message) {
-    showToast('Please describe your issue.', 'error');
-    return;
-  }
-
-  // ── 5-word minimum validation ──
-  const wordCount = message.trim().split(/\s+/).length;
-  if (wordCount < 5) {
-    showToast('Please describe your issue using at least 5 words.', 'error');
-    return;
-  }
-
-  const btn = document.getElementById('btn-send-message');
-  btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-  try {
-    // Save to Firestore
-    await submitContactMessage(user.uid, {
-      subject,
-      message,
-      userName: user.username || '—',
-      userEmail: user.email || '—'
-    });
-
-    // ── Send email via EmailJS ──
-    // Replace [ADD_SERVICE_ID] and [ADD_TEMPLATE_ID] with your actual EmailJS IDs
- 
-    showToast('Your message has been sent successfully.');
-
-    // Reset form
-    subjectSelect.value = '';
-    messageArea.value = '';
-    messageArea.disabled = true;
-    messageArea.placeholder = 'Select a subject first...';
-  } catch (err) {
-    console.error('Contact error:', err);
-    showToast('Failed to send message. Try again.', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
-  }
-});
+// Send Message button logic removed — button redirects to download.html via app-redirect.js
 
 
 // Show alert if user clicks textarea before selecting subject

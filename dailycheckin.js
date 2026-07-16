@@ -4,10 +4,17 @@
 
 // ── 1. Imports ────────────────────────────────────────────────────────────────
 
+import { getUserProfile, claimDailyCheckin } from "./firebase.js";
+import { onCheckinComplete } from "./refer.js";
 import {
-  getUserProfile, logTransaction,
-  db, doc, updateDoc, increment,
-  addDoc, collection, Timestamp, serverTimestamp
+  db,
+  doc,
+  updateDoc,
+  increment,
+  addDoc,
+  collection,
+  Timestamp,
+  serverTimestamp
 } from "./firebase.js";
 
 // ── 2. Constants & Reward Mapping ─────────────────────────────────────────────
@@ -181,7 +188,6 @@ function showDay3ReferralRewardOverlay(uid) {
     showDay3InstagramForm(uid);
   });
 }
-window.showDay3ReferralRewardOverlay = showDay3ReferralRewardOverlay;
 
 function showDay3InstagramForm(uid) {
   // (Keep this function - it's reused)
@@ -218,10 +224,7 @@ function showDay3InstagramForm(uid) {
 
   document.body.appendChild(overlay);
 
-document.getElementById("day3-cancel-btn").addEventListener("click", () => {
-    overlay.remove();
-    window.showToast?.("Claim your 50 followers from Wallet → My Bonuses 🎁", "success");
-  });
+  document.getElementById("day3-cancel-btn").addEventListener("click", () => overlay.remove());
 
   document.getElementById("day3-confirm-btn").addEventListener("click", async () => {
     const username = document.getElementById("day3-ig-username")?.value?.trim();
@@ -251,7 +254,8 @@ document.getElementById("day3-cancel-btn").addEventListener("click", () => {
       });
 
       try {
-  await logTransaction(uid, "Day 3 Referral Bonus - 50 Free Followers", 0);
+        const { logTransaction } = await import("./firebase.js");
+        await logTransaction(uid, "Day 3 Referral Bonus - 50 Free Followers", 0);
       } catch (e) { console.warn(e); }
 
       try {
@@ -269,6 +273,8 @@ document.getElementById("day3-cancel-btn").addEventListener("click", () => {
     }
   });
 }
+
+// ── 6. Diamond Grand Prize (Day 7) ───────────────────────────────────────────
 
 // ── 6. Diamond Grand Prize (Day 7) ───────────────────────────────────────────
 
@@ -302,39 +308,12 @@ function showDiamondGrandPrize(uid) {
 
 // ── 7. Event Listeners & Claim Logic ─────────────────────────────────────────
 
-
-document.addEventListener("click", async (e) => {
-  if (!e.target.closest("#btn-checkin")) return;
-  if (isClaiming) return;
-
-  const user = window.cashTreasureUser;
-  if (!user) return window.showToast?.("Login required", "error");
-
-  isClaiming = true;
-  const btn = document.getElementById("btn-checkin");
-  btn.disabled = true;
-  btn.innerHTML = "Loading...";
-
-  try {
-    window.pendingRewardType = "daily_checkin";
-    window.pendingCheckinUser = user;
-
-    if (window.Android?.showAd) {
-      Android.showAd();
-    } else {
-      window.showToast?.("Ads not available", "error");
-      btn.disabled = false;
-      btn.innerHTML = "🎁 CLAIM";
-      isClaiming = false;
-    }
-  } catch (err) {
-    console.error("[Check-in] Claim error:", err);
-    window.showToast?.("Something went wrong", "error");
-    btn.disabled = false;
-    btn.innerHTML = "🎁 CLAIM";
-    isClaiming = false;
-  }
+window.addEventListener("userReady", async (e) => {
+  const profile = await getUserProfile(e.detail.uid);
+  if (profile) renderCheckin(profile);
 });
+
+// CLAIM button logic removed — button redirects to download.html via app-redirect.js
 
 window.onDailyCheckinRewarded = async function () {
   const user = window.pendingCheckinUser;
@@ -372,22 +351,11 @@ window.onDailyCheckinRewarded = async function () {
     const creditEl = document.getElementById("credit-count");
     if (creditEl) creditEl.textContent = profile.credits;
 
-// Day 7 Diamond
+    // Day 7 Diamond
     if (result.day === 7 && result.isGift) {
       const diamondEl = document.getElementById("diamond-count");
       if (diamondEl && result.newDiamonds !== undefined) diamondEl.textContent = Math.floor(result.newDiamonds);
       showDiamondGrandPrize(user.uid);
-    }
-    // Day 3 — check if user has a referral code entered
-    else if (result.day === 3) {
-      if (result.reward > 0) {
-        window.showToast?.(`+${result.reward} Credits Added 🎉`);
-      }
-      // Show 50 free followers ONLY if user entered someone's refer code AND hasn't claimed it yet
-      const freshProfile = await getUserProfile(user.uid);
-      if (freshProfile?.referredBy && !freshProfile?.day3BonusClaimed) {
-        showDay3ReferralRewardOverlay(user.uid);
-      }
     }
     // Oops Day
     else if (result.isOops) {

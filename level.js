@@ -1,18 +1,20 @@
 // ================================
 // Prime Follower - Level & Membership System
 // Complete membership tier system with carousel, progress tracking, and retention
-// ★ CINEMATIC VIP EDITION v4 — logic 100% unchanged, only decorative layers added
-//   (Royal Golden Palace Doors entrance + non-wrapping title stack)
 // ================================
 
 // ── 1. Imports ────────────────────────────────────────────────────────────────
 
 import {
-  db,
+  db, auth,
   getUserProfile,
-  doc, updateDoc,
-  Timestamp, serverTimestamp
+  doc, updateDoc, getDoc,
+  increment, Timestamp, serverTimestamp
 } from "./firebase.js";
+
+import {
+  collection, query, where, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── 2. Level Definitions ──────────────────────────────────────────────────────
 
@@ -147,9 +149,9 @@ benefits: [
     requirement: "₹2000+ Spending During Current Calendar Month.",
     retentionReq: "SPEND ATLEAST ₹1000 DURING A CALENDER MONTH",
 benefits: [
-      { icon: "🏷️", text: "Monthly 50% Coupon Code" },
-      { icon: "💰", text: "Monthly 25% Credit Order Coupon" },
-      { icon: "👥", text: "500 Free Followers Every Month" },
+      { icon: "🏷️", text: "Monthly 15% Coupon Code" },
+      { icon: "💰", text: "Monthly 10% Credit Order Coupon" },
+      { icon: "👥", text: "250 Free Followers Every Month" },
       { icon: "💎", text: "Secret PRIME Telegram Group" },
       { icon: "📈", text: "Ad Earnings Multiplier: 2x" },
       { icon: "📺", text: "Daily Ad Limit: 50" },
@@ -385,23 +387,7 @@ export async function evaluateAndUpdateLevel(uid) {
   }
 }
 
-// ── 4b. ★ COSMETIC HELPER — percentage count-up (display only) ────────────────
-// Animates the TEXT of the percentage from 0 → target. Never touches the
-// calculated value or any state. Pure eye-candy.
-function lvCountUpPercent(el, target) {
-  if (!el) return;
-  const duration = 1300;
-  const start = performance.now();
-  const easeOut = t => 1 - Math.pow(1 - t, 3);
-  function step(now) {
-    const p = Math.min((now - start) / duration, 1);
-    el.textContent = Math.round(easeOut(p) * target) + "%";
-    if (p < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-
-// ── 5. Home Page Level Card (CINEMATIC VISUAL MARKUP) ─────────────────────────
+// ── 5. Home Page Level Card ───────────────────────────────────────────────────
 
 export function renderLevelCard(profile) {
   const currentLevel = profile.level || calculateUserLevel(profile);
@@ -413,76 +399,22 @@ export function renderLevelCard(profile) {
 
   const card = document.createElement("div");
   card.id = "level-card";
-  // ★ VISUAL: level-theme-X drives per-tier glow colors in CSS only
-  card.className = `level-card-home level-theme-${currentLevel}`;
+  card.className = "level-card-home";
   card.addEventListener("click", () => openMembershipPage(profile));
 
   const progressLabel = nextLevel
     ? `Progress To ${nextLevel.name.toUpperCase()}`
     : "Maximum Level Achieved";
 
-  // ★ VISUAL: staggered letter reveal — each word renders on its OWN
-  // non-wrapping line ("PRIME" / "STARTER") so names never break mid-word.
-  let lvLetterIndex = 0;
-  const nameLines = levelDef.name.toUpperCase().split(" ").map(word => {
-    const letters = word.split("").map(ch =>
-      `<span class="lv-letter" style="--i:${lvLetterIndex++}">${ch}</span>`
-    ).join("");
-    return `<span class="lv-name-line">${letters}</span>`;
-  }).join("");
-
-  // ★ VISUAL: glowing progression path — reads already-computed currentLevel only
-  const pathNodes = LEVELS.map((l, li) => {
-    const state = l.id < currentLevel ? "done" : (l.id === currentLevel ? "now" : "lock");
-    const node = `
-      <div class="lv-path-node lv-node-${state}" style="--pi:${li}">
-        <img src="${l.levelBadge}" alt="">
-        ${state === "lock" ? '<span class="lv-node-lock">🔒</span>' : ''}
-      </div>`;
-    const link = li < LEVELS.length - 1
-      ? `<span class="lv-path-link ${l.id < currentLevel ? 'lv-link-lit' : ''}"></span>`
-      : "";
-    return node + link;
-  }).join("");
-
-  // ★ VISUAL: "Next Rewards" teaser strip — uses already-computed nextLevel
-  const nextTeaserHTML = nextLevel ? `
-    <div class="lv-next-teaser">
-      <div class="lv-next-badge-wrap">
-        <img src="${nextLevel.levelBadge}" class="lv-next-badge" alt="">
-        <span class="lv-next-lock">🔒</span>
-      </div>
-      <div class="lv-next-info">
-        <span class="lv-next-label">NEXT REWARDS</span>
-        <span class="lv-next-name">${nextLevel.name.toUpperCase()}</span>
-      </div>
-      <i class="fas fa-chevron-right lv-next-arrow"></i>
-    </div>` : `
-    <div class="lv-next-teaser lv-max">
-      <span class="lv-next-crown">👑</span>
-      <div class="lv-next-info">
-        <span class="lv-next-label">LEGENDARY STATUS</span>
-        <span class="lv-next-name">MAXIMUM LEVEL</span>
-      </div>
-    </div>`;
-
   card.innerHTML = `
-    <div class="lv-aurora"></div>
-    <div class="lv-fog"></div>
     <div class="level-particles" id="level-particles"></div>
     <div class="level-shine"></div>
-    <div class="lv-gloss"></div>
     <div class="level-card-inner">
       <div class="level-badge-section">
-        <div class="lv-badge-aura"></div>
         <div class="level-badge-ring level-ring-${currentLevel}" style="position:relative;">
-          <span class="lv-badge-sheen"></span>
-          <span class="lv-sparkle lv-s1">✦</span>
-          <span class="lv-sparkle lv-s2">✧</span>
-          <span class="lv-sparkle lv-s3">✦</span>
           <img src="${levelDef.badge}" alt="${levelDef.name}" class="level-badge-img">
           <span class="level-badge-number">${levelDef.id}</span>
-          <div class="level-badge-overlay lv-badge-float" style="
+          <div class="level-badge-overlay" style="
             position:absolute; top:-22px; left:50%; transform:translateX(-50%);
             width:50px; height:50px; z-index:10;
             filter:drop-shadow(0 0 14px ${levelDef.badgeGlow}) drop-shadow(0 0 30px ${levelDef.badgeGlow});
@@ -492,26 +424,20 @@ export function renderLevelCard(profile) {
         </div>
       </div>
       <div class="level-info-section">
-        <span class="level-you-are lv-fade-up" style="--d:.08s">You Are</span>
-        <h3 class="level-name-text">${nameLines}</h3>
-        <p class="level-journey-text lv-fade-up" style="--d:.38s">${levelDef.journey}</p>
-        <div class="level-progress-section lv-fade-up" style="--d:.52s">
+        <span class="level-you-are">You Are</span>
+        <h3 class="level-name-text">${levelDef.name.toUpperCase()}</h3>
+        <p class="level-journey-text">${levelDef.journey}</p>
+        <div class="level-progress-section">
           <span class="level-progress-label">${progressLabel}</span>
           <div class="level-progress-track">
-            <div class="lv-energy-spark"></div>
             <div class="level-progress-fill" style="width:0%">
-              <span class="level-progress-pct">0%</span>
+              <span class="level-progress-pct">${progress.percent}%</span>
             </div>
           </div>
           <span class="level-progress-desc">${progress.text}</span>
         </div>
       </div>
     </div>
-    <div class="lv-path lv-fade-up" style="--d:.6s">
-      <div class="lv-path-track">${pathNodes}</div>
-    </div>
-    ${nextTeaserHTML}
-    <div class="lv-floor-reflection"></div>
     <div class="level-card-tap-hint">TAP TO VIEW MEMBERSHIP <i class="fas fa-chevron-right"></i></div>
   `;
 
@@ -524,8 +450,6 @@ export function renderLevelCard(profile) {
     setTimeout(() => {
       const fill = card.querySelector(".level-progress-fill");
       if (fill) fill.style.width = progress.percent + "%";
-      // ★ VISUAL: cosmetic count-up of displayed percentage text
-      lvCountUpPercent(card.querySelector(".level-progress-pct"), progress.percent);
     }, 200);
   });
 
@@ -544,10 +468,6 @@ function spawnLevelParticles() {
     dot.style.top = Math.random() * 100 + "%";
     dot.style.animationDelay = (Math.random() * 4) + "s";
     dot.style.animationDuration = (3 + Math.random() * 4) + "s";
-    // ★ VISUAL: organic size variance for constellation dust feel
-    const size = (1.5 + Math.random() * 2.5).toFixed(1);
-    dot.style.width = size + "px";
-    dot.style.height = size + "px";
     container.appendChild(dot);
   }
 }
@@ -563,7 +483,7 @@ function startLevelPulse() {
   }, 5000);
 }
 
-// ── 6. Membership Full Page (CINEMATIC VIP HALL MARKUP) ───────────────────────
+// ── 6. Membership Full Page ───────────────────────────────────────────────────
 
 let memberSlideIndex = 0;
 let memberAutoTimer = null;
@@ -590,72 +510,10 @@ function openMembershipPage(profile) {
         ${buildAllSlides(profile, currentLevel)}
       </div>
     </div>
-
-    <!-- ★ VISUAL: VIP hall ambient layers (pointer-events:none, decorative only) -->
-    <div class="ms-hall" aria-hidden="true">
-      <div class="ms-hall-fog"></div>
-      <div class="ms-hall-floor"></div>
-      <div class="ms-hall-gems">
-        <span class="ms-gem" style="--gx:12%;--gd:0s;--gs:13px">💎</span>
-        <span class="ms-gem" style="--gx:78%;--gd:4s;--gs:10px">✦</span>
-        <span class="ms-gem" style="--gx:35%;--gd:8s;--gs:9px">✧</span>
-        <span class="ms-gem" style="--gx:60%;--gd:12s;--gs:12px">💎</span>
-        <span class="ms-gem" style="--gx:88%;--gd:16s;--gs:8px">✦</span>
-        <span class="ms-gem" style="--gx:22%;--gd:20s;--gs:10px">✧</span>
-      </div>
-    </div>
-
-    <!-- ★ VISUAL: ROYAL GOLDEN PALACE DOORS entrance (auto-removed, GPU-only) -->
-    <div class="msd" id="msd-doors" aria-hidden="true">
-      <div class="msd-rays"></div>
-      <div class="msd-glow"></div>
-      <div class="msd-particles">
-        <span class="msd-dust" style="--dx:12%;--dd:.40s;--ds:3px"></span>
-        <span class="msd-dust" style="--dx:26%;--dd:.65s;--ds:2px"></span>
-        <span class="msd-dust" style="--dx:38%;--dd:.50s;--ds:2.5px"></span>
-        <span class="msd-dust" style="--dx:50%;--dd:.80s;--ds:3px"></span>
-        <span class="msd-dust" style="--dx:62%;--dd:.55s;--ds:2px"></span>
-        <span class="msd-dust" style="--dx:74%;--dd:.70s;--ds:2.5px"></span>
-        <span class="msd-dust" style="--dx:88%;--dd:.45s;--ds:3px"></span>
-        <span class="msd-dust" style="--dx:45%;--dd:.95s;--ds:2px"></span>
-      </div>
-      <img src="icons/crowns.png" class="msd-crown-center" alt="">
-      <div class="msd-door msd-left">
-        <div class="msd-frame">
-          <img src="icons/crowns.png" class="msd-crown" alt="">
-          <img src="icons/prime-text.png" class="msd-word-img" alt="PRIME">
-          <img src="icons/crowns.png" class="msd-crown" alt="">
-        </div>
-        <div class="msd-edge"></div>
-      </div>
-      <div class="msd-door msd-right">
-        <div class="msd-frame">
-          <img src="icons/crowns.png" class="msd-crown" alt="">
-          <img src="icons/levels-text.png" class="msd-word-img" alt="LEVELS">
-          <img src="icons/crowns.png" class="msd-crown" alt="">
-        </div>
-        <div class="msd-edge"></div>
-      </div>
-      <div class="msd-vignette"></div>
-    </div>
   `;
 
   document.body.appendChild(overlay);
   requestAnimationFrame(() => overlay.classList.add("visible"));
-
-  // ★ VISUAL: royal doors — fade out & remove once fully open (~1.4s total)
-  const msdEl = document.getElementById("msd-doors");
-  if (msdEl) {
-    setTimeout(() => msdEl.classList.add("msd-out"), 2300);
-    setTimeout(() => msdEl.remove(), 2500);
-  }
-
-  // ★ VISUAL: light reflections react to scroll (passive, CSS-var only)
-  overlay.querySelectorAll(".membership-slide-scroll").forEach(sc => {
-    sc.addEventListener("scroll", () => {
-      sc.style.setProperty("--scroll-glint", ((sc.scrollTop % 600) / 600).toFixed(3));
-    }, { passive: true });
-  });
 
   buildMemberDots(6);
   goToMemberSlide(0);
@@ -690,22 +548,21 @@ function buildIntroSlide() {
     <div class="membership-slide ms-slide-intro">
       <div class="ms-bg-particles" id="ms-particles-0"></div>
       <div class="membership-slide-scroll">
-        <div class="ms-scroll-light"></div>
         <div class="membership-intro-content">
-          <div class="membership-crown-wrap ms-anim" style="--d:.05s">
+          <div class="membership-crown-wrap">
             <img src="icons/crown.png" alt="Crown" class="membership-crown-img">
           </div>
-          <h2 class="membership-intro-heading ms-anim" style="--d:.14s">PRIME<br>MEMBERSHIP</h2>
-          <div class="membership-intro-divider ms-anim" style="--d:.22s"></div>
-          <p class="membership-intro-desc ms-anim" style="--d:.3s">
+          <h2 class="membership-intro-heading">PRIME<br>MEMBERSHIP</h2>
+          <div class="membership-intro-divider"></div>
+          <p class="membership-intro-desc">
             Prime Membership rewards active users with exclusive discounts, free followers,
             premium benefits, faster delivery, higher earnings, and VIP rewards.
           </p>
-          <p class="membership-intro-desc ms-anim" style="--d:.38s;margin-top:12px;">
+          <p class="membership-intro-desc" style="margin-top:12px;">
             The more active you become, the more rewards you unlock.
             Reach higher levels and enjoy the full Prime experience.
           </p>
-          <div class="ms-info-card ms-info-white ms-anim" style="--d:.46s">
+          <div class="ms-info-card ms-info-white">
             <h4 class="ms-info-title">🚀 LEVEL SKIP SYSTEM</h4>
             <p class="ms-info-text">You are <b>NOT</b> required to level up one by one. Prime Follower automatically assigns the <b>highest level</b> you qualify for.</p>
             <div class="ms-info-example">
@@ -717,7 +574,7 @@ function buildIntroSlide() {
               <p>A new user spends ₹2500 this month → <b>Immediately becomes Prime Member</b>. Highest level always wins.</p>
             </div>
           </div>
-          <div class="ms-info-card ms-info-gold ms-anim" style="--d:.56s">
+          <div class="ms-info-card ms-info-gold">
             <div class="ms-info-gold-shine"></div>
             <h4 class="ms-info-title" style="color:#1a1000;">⭐ MONTHLY LEVEL REVIEW</h4>
             <p class="ms-info-text" style="color:#3b2800;">At the start of every month, Prime Follower reviews your previous month's activity to keep membership fair.</p>
@@ -735,7 +592,7 @@ function buildIntroSlide() {
             </div>
             <p class="ms-info-text" style="color:#5a4000;font-size:12px;margin-top:10px;font-style:italic;">Level maintenance keeps membership fair and rewards active members.</p>
           </div>
-          <div class="membership-swipe-hint ms-anim" style="--d:.68s">
+          <div class="membership-swipe-hint">
             <span>SWIPE TO EXPLORE LEVELS</span>
             <i class="fas fa-chevron-right"></i>
             <i class="fas fa-chevron-right" style="opacity:0.4;"></i>
@@ -753,22 +610,15 @@ function buildLevelSlide(levelDef, currentLevel, profile) {
 
   let statusBadge = "";
   if (isCurrentLevel) {
-    statusBadge = `<span class="membership-status-badge current ms-anim" style="--d:.05s">YOUR LEVEL</span>`;
+    statusBadge = `<span class="membership-status-badge current">YOUR LEVEL</span>`;
   } else if (isUnlocked) {
-    statusBadge = `<span class="membership-status-badge unlocked ms-anim" style="--d:.05s">UNLOCKED</span>`;
+    statusBadge = `<span class="membership-status-badge unlocked">UNLOCKED</span>`;
   } else {
-    statusBadge = `<span class="membership-status-badge locked ms-anim" style="--d:.05s">LOCKED</span>`;
+    statusBadge = `<span class="membership-status-badge locked">LOCKED</span>`;
   }
 
-  // ★ VISUAL: two stacked, non-wrapping title lines — "PRIME" / rank word.
-  // Long names can never break mid-word (e.g. "STAR / TER").
-  const nameWords = levelDef.name.toUpperCase().split(" ");
-  const namePrime = nameWords[0];
-  const nameRank = nameWords.slice(1).join(" ") || nameWords[0];
-
-  // ★ VISUAL: staggered achievement-style reveal per benefit row
-  const benefitsHTML = levelDef.benefits.map((b, bi) => `
-    <div class="membership-benefit-item ms-anim" style="--d:${(0.5 + bi * 0.05).toFixed(2)}s">
+  const benefitsHTML = levelDef.benefits.map(b => `
+    <div class="membership-benefit-item">
       <span class="membership-benefit-icon">${b.icon}</span>
       <span class="membership-benefit-text">${b.text}</span>
     </div>
@@ -778,35 +628,28 @@ function buildLevelSlide(levelDef, currentLevel, profile) {
     <div class="membership-slide ${slideThemeClass}">
       <div class="ms-bg-particles" id="ms-particles-${levelDef.id}"></div>
       <div class="membership-slide-scroll">
-        <div class="ms-scroll-light"></div>
         <div class="membership-level-content">
           ${statusBadge}
-          <div class="membership-level-badge-wrap ms-badge-ring-${levelDef.id} ${isCurrentLevel ? 'active-glow' : ''} ms-anim" style="position:relative;--d:.12s">
-            <span class="lv-badge-sheen"></span>
-            <span class="lv-sparkle lv-s1">✦</span>
-            <span class="lv-sparkle lv-s2">✧</span>
+          <div class="membership-level-badge-wrap ms-badge-ring-${levelDef.id} ${isCurrentLevel ? 'active-glow' : ''}" style="position:relative;">
             <img src="${levelDef.badge}" alt="${levelDef.name}" class="membership-level-badge-img">
             <span class="membership-level-badge-num">${levelDef.id}</span>
-            <div class="lv-badge-float" style="position:absolute; top:-26px; left:50%; transform:translateX(-50%);
+            <div style="position:absolute; top:-26px; left:50%; transform:translateX(-50%);
                         width:56px; height:56px; z-index:10;
                         filter:drop-shadow(0 0 14px ${levelDef.badgeGlow}) drop-shadow(0 0 28px ${levelDef.badgeGlow});">
               <img src="${levelDef.levelBadge}" style="width:100%;height:100%;object-fit:contain;">
             </div>
           </div>
-          <h2 class="membership-level-name ms-anim" style="--d:.22s">
-            <span class="ms-name-line ms-name-prime">${namePrime}</span>
-            <span class="ms-name-line ms-name-rank">${nameRank}</span>
-          </h2>
-          <p class="membership-level-journey ms-anim" style="--d:.3s">${levelDef.journey}</p>
-          <div class="membership-req-box ms-glass-card ms-float-a ms-anim" style="--d:.38s">
+          <h2 class="membership-level-name">${levelDef.name.toUpperCase()}</h2>
+          <p class="membership-level-journey">${levelDef.journey}</p>
+          <div class="membership-req-box ms-glass-card">
             <span class="membership-req-label">REQUIREMENT</span>
             <p class="membership-req-text">${levelDef.requirement}</p>
           </div>
-          <div class="membership-benefits-box ms-glass-card ms-float-b ms-anim" style="--d:.46s">
+          <div class="membership-benefits-box ms-glass-card">
             <span class="membership-benefits-label">BENEFITS</span>
             ${benefitsHTML}
           </div>
-          <div class="membership-req-box ms-glass-card ms-float-c ms-anim" style="margin-top:14px;--d:.6s">
+          <div class="membership-req-box ms-glass-card" style="margin-top:14px;">
             <span class="membership-req-label">⚠️ REQUIREMENT TO STAY</span>
             <p class="membership-req-text" style="font-weight:800; ${levelDef.retentionReq === 'NO REQUIREMENT!' ? 'color:#86efac;' : 'color:#fbbf24;'}">${levelDef.retentionReq}</p>
           </div>
@@ -942,13 +785,7 @@ export async function initLevelSystem(uid) {
     }
 
     const reviewResult = await applyMonthlyReview(uid, profile);
-    // Skip the auto-upgrade check right after a demotion — otherwise
-    // evaluateAndUpdateLevel() re-reads the still-true lifetime flags
-    // (primeViralBonusClaimed / first_paid_order_completed) and bumps
-    // the user straight back up to the level they were just demoted from.
-    const evalResult = reviewResult.demoted
-      ? { levelChanged: false, oldLevel: reviewResult.newLevel, newLevel: reviewResult.newLevel, levelDef: getLevelDef(reviewResult.newLevel) }
-      : await evaluateAndUpdateLevel(uid);
+    const evalResult = await evaluateAndUpdateLevel(uid);
     profile = await getUserProfile(uid);
 
     renderLevelCard(profile);
@@ -993,29 +830,10 @@ function showLevelUpNotification(levelDef) {
   overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:99999;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);`;
   overlay.innerHTML = `
     <div class="level-up-card">
-      <div class="lvup-rays"></div>
-      <div class="level-up-sparkles">
-        <span class="lvup-star" style="--sx:12%;--sy:18%;--sd:0s">✦</span>
-        <span class="lvup-star" style="--sx:82%;--sy:12%;--sd:.6s">✧</span>
-        <span class="lvup-star" style="--sx:20%;--sy:78%;--sd:1.1s">✦</span>
-        <span class="lvup-star" style="--sx:88%;--sy:70%;--sd:1.6s">✧</span>
-        <span class="lvup-star" style="--sx:50%;--sy:8%;--sd:2.1s">✦</span>
-        <span class="lvup-star" style="--sx:65%;--sy:88%;--sd:2.6s">✧</span>
-        <span class="lvup-star" style="--sx:40%;--sy:60%;--sd:3.1s">💎</span>
-      </div>
-      <div class="lvup-converge">
-        <span class="lvup-orb" style="--ox:-120px;--oy:-70px;--od:.1s"></span>
-        <span class="lvup-orb" style="--ox:130px;--oy:-50px;--od:.25s"></span>
-        <span class="lvup-orb" style="--ox:-100px;--oy:90px;--od:.4s"></span>
-        <span class="lvup-orb" style="--ox:110px;--oy:80px;--od:.55s"></span>
-        <span class="lvup-orb" style="--ox:0px;--oy:-130px;--od:.7s"></span>
-      </div>
-      <div class="lvup-sheen"></div>
-      <div style="font-size:50px;margin-bottom:10px;" class="lvup-emoji">🎉</div>
+      <div class="level-up-sparkles"></div>
+      <div style="font-size:50px;margin-bottom:10px;">🎉</div>
       <h2 class="level-up-title">LEVEL UP!</h2>
       <div class="level-up-badge-ring">
-        <span class="lvup-burst"></span>
-        <span class="lv-badge-sheen"></span>
         <img src="${levelDef.badge}" alt="${levelDef.name}" class="level-up-badge-img">
       </div>
       <h3 class="level-up-name">${levelDef.name.toUpperCase()}</h3>
@@ -1034,13 +852,6 @@ function showLevelUpNotification(levelDef) {
 function showDemotionNotification(newLevelDef) {
   window.showToast?.(`Level adjusted to ${newLevelDef.name}. Stay active to maintain your rank!`, "info");
 }
-
-// ── 9. Visual-Only Motion Helper ──────────────────────────────────────────────
-// Pauses all CSS animations while the tab is hidden (battery / performance).
-// Purely cosmetic — no app logic, state, or user flow is affected.
-document.addEventListener("visibilitychange", () => {
-  document.documentElement.classList.toggle("motion-paused", document.hidden);
-});
 
 export { LEVELS };
 

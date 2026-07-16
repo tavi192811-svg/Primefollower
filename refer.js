@@ -27,7 +27,7 @@ import {
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const APK_DOWNLOAD_LINK =
-  "https://primefollower.in/download.html";
+  "https://github.com/primefollower/---/releases/download/v1.2/Primefollower.apk";
 const MAX_REFERRALS = 3;
 const REFERRAL_CREDITS = [0, 10, 25, 0]; // index = referral count
 
@@ -519,15 +519,10 @@ function wireShareButton(code, expired) {
   }
 
 fresh.addEventListener("click", async () => {
-    const shareText = `🔥 Want FREE Instagram Followers? 🚀\n\n` +
-      `Join Prime Follower and start growing your Instagram 100% FREE! 💙\n\n` +
-      `🎁 Use my Referral Code: "${code}"\n\n` +
-      `✨ 50 FREE Followers after completing 3 Daily Check-ins!\n\n` +
-      `🌟 Prime Viral Bonus\n` +
-      `👥 Refer just 3 friends\n` +
-      `🎉 Earn 500 FREE Instagram Followers! ✨\n\n` +
-      `📲 Download Now:\n${APK_DOWNLOAD_LINK}\n\n` +
-      `⚡ Fast • Free • Safe • Daily Rewards • Referral Rewards • More Followers Await! 🚀🔥`;
+    const shareText = `🚀 Get FREE Instagram Followers!\n\n` +
+      `Download Prime Follower & use my referral code: ${code}\n\n` +
+      `👉 Download: ${APK_DOWNLOAD_LINK}\n\n` +
+      `You'll get 50 FREE followers after 3 daily check-ins! 🎁`;
 
     // Use native Android share sheet if in WebView (navigator.share doesn't exist in WebView)
     if (window.Android?.nativeShare) {

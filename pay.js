@@ -355,10 +355,9 @@ setTimeout(() => {
         WE WILL DELIVER WITHIN 24 HOURS
       `;
     }
-document.getElementById('payment-success-modal')?.classList.add('visible');
-window.markMissionPaidDone?.();
+    document.getElementById('payment-success-modal')?.classList.add('visible');
 
-// Start countdown timer
+    // Start countdown timer
     if (orderResult.completionTime) {
       const progressSection = document.getElementById("order-progress");
       if (progressSection) {
@@ -503,14 +502,8 @@ console.log("FINAL AMOUNT =", finalAmount);
       return showToast(data.message || "Failed to create order", "error");
     }
 
-  const orderId = data.orderId;
+    const orderId = data.orderId;
     console.log("Order ID:", orderId);
-
-    // Persist full order details locally so we can recover them if the
-    // Android WebView activity gets killed while the user is in their UPI app.
-    try {
-      localStorage.setItem(`pendingOrder_${orderId}`, JSON.stringify(packageData));
-    } catch (e) { console.warn("Could not persist pending order:", e); }
 
     if (typeof Cashfree === 'undefined') {
       return showToast("Payment SDK not loaded. Please refresh.", "error");
@@ -637,23 +630,12 @@ closeInstagramModal(false);
 // ── 11. Pending payment recovery ──
 window.triggerPendingPaymentSuccess = async function(orderId, amount, followers) {
   if (!orderId || localStorage.getItem(`paid_${orderId}`)) return;
-
-  // Recover the full order (Instagram username/link, coupon info) saved
-  // locally before the user left for their UPI app. Falls back to the
-  // bare webhook data if that local copy is missing (e.g. different device).
-  let packageData = {
+  await handlePaymentSuccess(orderId, {
     followers: followers || 0,
     amount:    amount    || 0,
     instagram_username: "Paid_Order",
     instagram_link:     ""
-  };
-  try {
-    const saved = localStorage.getItem(`pendingOrder_${orderId}`);
-    if (saved) packageData = { ...packageData, ...JSON.parse(saved) };
-  } catch (e) { console.warn("Could not read pending order:", e); }
-
-  await handlePaymentSuccess(orderId, packageData);
-  localStorage.removeItem(`pendingOrder_${orderId}`);
+  });
 };
 
 // ── 12. Exports ──
